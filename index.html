@@ -6,6 +6,7 @@
     <title>Holly Mart - প্রিমিয়াম গ্রোসারি শপ</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* আগের CSS একই থাকবে - সংক্ষেপে দিলাম */
         * {
             margin: 0;
             padding: 0;
@@ -665,6 +666,20 @@
         .network-status.success {
             background-color: var(--primary);
         }
+
+        .fallback-message {
+            background-color: var(--warning);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .fallback-message i {
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -846,6 +861,7 @@
                 }
                 
                 const data = await response.json();
+                // JSONBin.io থেকে ডেটা সঠিকভাবে এক্সট্র্যাক্ট করা
                 products = data.record || [];
                 
                 localStorage.setItem('hollymart_products', JSON.stringify(products));
@@ -857,11 +873,17 @@
             } catch (error) {
                 console.error('API থেকে ডেটা লোড করতে সমস্যা:', error);
                 
+                // লোকাল স্টোরেজ থেকে ডেটা লোড
                 const cached = localStorage.getItem('hollymart_products');
                 products = cached ? JSON.parse(cached) : [];
                 
                 loadingSpinner.style.display = 'none';
-                showNetworkStatus('অফলাইন মোডে পণ্য দেখাচ্ছে', 'error');
+                
+                if (products.length > 0) {
+                    showNetworkStatus('অফলাইন মোডে পণ্য দেখাচ্ছে', 'error');
+                } else {
+                    showNetworkStatus('কোনো পণ্য নেই', 'info');
+                }
                 return products;
             }
         }
