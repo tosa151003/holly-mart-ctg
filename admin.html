@@ -657,6 +657,20 @@
             background-color: var(--primary);
         }
 
+        .fallback-message {
+            background-color: var(--warning);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .fallback-message i {
+            margin-right: 5px;
+        }
+
         @media (max-width: 768px) {
             .product-list-grid {
                 grid-template-columns: 1fr;
@@ -704,6 +718,11 @@
             </a>
         </div>
 
+        <!-- Fallback Message for Offline Mode -->
+        <div id="fallback-message" class="fallback-message" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i> অফলাইন মোডে আছেন। পণ্য লোকাল স্টোরেজে সংরক্ষিত হবে।
+        </div>
+
         <!-- লগইন সেকশন -->
         <section id="login" class="login-section">
             <h3><i class="fas fa-lock"></i> এডমিন লগইন</h3>
@@ -738,6 +757,9 @@
                 </button>
                 <button class="admin-btn" id="refresh-btn">
                     <i class="fas fa-sync-alt"></i> রিফ্রেশ
+                </button>
+                <button class="admin-btn" id="test-api-btn" style="background-color: var(--accent);">
+                    <i class="fas fa-plug"></i> API টেস্ট
                 </button>
             </div>
             
@@ -955,6 +977,8 @@
         const productListContainer = document.getElementById('product-list-container');
         const networkStatus = document.getElementById('network-status');
         const refreshBtn = document.getElementById('refresh-btn');
+        const testApiBtn = document.getElementById('test-api-btn');
+        const fallbackMessage = document.getElementById('fallback-message');
 
         const uploadLocalBtn = document.getElementById('upload-local-btn');
         const uploadUrlBtn = document.getElementById('upload-url-btn');
@@ -981,6 +1005,35 @@
             }, 3000);
         }
 
+        // API টেস্ট ফাংশন
+        async function testAPIConnection() {
+            try {
+                showNetworkStatus('API টেস্ট চলছে...', 'info');
+                
+                const response = await fetch(API_URL, {
+                    headers: {
+                        'X-Master-Key': API_KEY
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showNetworkStatus('✅ API সংযোগ সফল!', 'success');
+                    console.log('API ডেটা:', data);
+                    return true;
+                } else {
+                    showNetworkStatus(`❌ API সংযোগ ব্যর্থ: ${response.status}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                console.error('API টেস্ট ত্রুটি:', error);
+                showNetworkStatus('❌ API সংযোগ ব্যর্থ', 'error');
+                return false;
+            }
+        }
+
+        testApiBtn.addEventListener('click', testAPIConnection);
+
         async function loadProductsFromAPI() {
             try {
                 const response = await fetch(API_URL, {
@@ -998,6 +1051,7 @@
                 
                 localStorage.setItem('hollymart_products', JSON.stringify(products));
                 
+                fallbackMessage.style.display = 'none';
                 showNetworkStatus('পণ্য সফলভাবে লোড হয়েছে!', 'success');
                 return products;
             } catch (error) {
@@ -1006,6 +1060,7 @@
                 const cached = localStorage.getItem('hollymart_products');
                 products = cached ? JSON.parse(cached) : [];
                 
+                fallbackMessage.style.display = 'block';
                 showNetworkStatus('অফলাইন মোডে পণ্য দেখাচ্ছে', 'error');
                 return products;
             }
@@ -1013,6 +1068,8 @@
 
         async function saveProductsToAPI() {
             try {
+                showNetworkStatus('পণ্য সংরক্ষণ করা হচ্ছে...', 'info');
+                
                 const response = await fetch(API_URL, {
                     method: 'PUT',
                     headers: {
@@ -1023,19 +1080,26 @@
                 });
                 
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error Response:', errorText);
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
+                const data = await response.json();
+                console.log('API Save Response:', data);
+                
                 localStorage.setItem('hollymart_products', JSON.stringify(products));
                 
-                showNetworkStatus('পণ্য সফলভাবে সেভ হয়েছে!', 'success');
+                fallbackMessage.style.display = 'none';
+                showNetworkStatus('পণ্য সফলভাবে সংরক্ষণ হয়েছে!', 'success');
                 return true;
             } catch (error) {
                 console.error('API তে ডেটা সেভ করতে সমস্যা:', error);
                 
                 localStorage.setItem('hollymart_products', JSON.stringify(products));
                 
-                showNetworkStatus('অফলাইন মোডে সেভ হয়েছে', 'error');
+                fallbackMessage.style.display = 'block';
+                showNetworkStatus('অফলাইন মোডে সংরক্ষণ হয়েছে', 'error');
                 return false;
             }
         }
@@ -1268,12 +1332,18 @@
             showTempMessage('পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!', 'success');
         });
 
+        // নতুন প্রোডাক্ট যোগ ফর্ম সাবমিট - ফিক্সড ভার্সন
         addProductForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const productName = document.getElementById('product-name').value;
             const productCategory = document.getElementById('product-category').value;
             const productDesc = document.getElementById('product-desc').value;
+            
+            if (!productName || !productCategory || !productDesc) {
+                showTempMessage('দয়া করে সকল তথ্য দিন!', 'error');
+                return;
+            }
             
             let productImage = null;
             
@@ -1299,11 +1369,14 @@
             
             products.push(newProduct);
             
-            await saveProductsToAPI();
+            // API তে সেভ করার চেষ্টা করুন
+            const saved = await saveProductsToAPI();
             
+            // UI আপডেট
             loadProducts();
             updateProductCount();
             
+            // ফর্ম রিসেট
             addProductForm.reset();
             localImagePreview.src = '';
             localPreviewContainer.classList.remove('active');
@@ -1312,12 +1385,17 @@
             productImgUrlInput.value = '';
             uploadLocalBtn.click();
             
+            // সাকসেস মেসেজ
             successMessage.style.display = 'block';
             setTimeout(() => {
                 successMessage.style.display = 'none';
             }, 3000);
             
-            showTempMessage('পণ্য সফলভাবে যোগ করা হয়েছে! এখন সব ডিভাইসে সবাই দেখতে পারবে।', 'success');
+            if (saved) {
+                showTempMessage('✅ পণ্য সফলভাবে যোগ করা হয়েছে! এখন সব ডিভাইসে দেখা যাবে।', 'success');
+            } else {
+                showTempMessage('⚠️ পণ্য যোগ হয়েছে কিন্তু API সংযোগ নেই। শুধু এই ডিভাইসে দেখা যাবে।', 'warning');
+            }
         });
 
         deleteAllBtn.addEventListener('click', function() {
@@ -1440,5 +1518,3 @@
     </script>
 </body>
 </html>
-
-
