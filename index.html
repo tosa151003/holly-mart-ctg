@@ -6,6 +6,7 @@
     <title>Holly Mart - প্রিমিয়াম গ্রোসারি শপ</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* সম্পূর্ণ আগের CSS একই থাকবে */
         * {
             margin: 0;
             padding: 0;
@@ -624,6 +625,23 @@
             transform: scale(1.05);
         }
 
+        /* লোডিং স্পিনার */
+        .loading-spinner {
+            display: none;
+            margin: 30px auto;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         /* স্ক্রলবার স্টাইল */
         ::-webkit-scrollbar {
             width: 8px;
@@ -640,6 +658,26 @@
         
         ::-webkit-scrollbar-thumb:hover {
             background: #219653;
+        }
+
+        /* নেটওয়ার্ক স্ট্যাটাস */
+        .network-status {
+            background-color: var(--warning);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            text-align: center;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        .network-status.error {
+            background-color: var(--secondary);
+        }
+
+        .network-status.success {
+            background-color: var(--primary);
         }
     </style>
 </head>
@@ -680,6 +718,9 @@
 
     <!-- মূল কন্টেন্ট -->
     <div class="container">
+        <!-- নেটওয়ার্ক স্ট্যাটাস -->
+        <div id="network-status" class="network-status"></div>
+
         <!-- স্ট্যাটাস বার -->
         <div class="status-bar">
             <span><i class="fas fa-shopping-cart"></i> <span id="product-count">0</span>টি পণ্য</span>
@@ -706,17 +747,17 @@
             <button class="category-btn" data-category="মসলা">মসলা</button>
         </div>
 
+        <!-- লোডিং স্পিনার -->
+        <div id="loading-spinner" class="loading-spinner"></div>
+
         <!-- প্রোডাক্ট সেকশন -->
         <h2 id="products" class="section-title">আমাদের গ্রোসারি পণ্য</h2>
         <div class="products-grid" id="products-container">
             <!-- প্রোডাক্ট কার্ড গুলি এখানে জাভাস্ক্রিপ্ট দ্বারা লোড হবে -->
             <div class="no-products">
                 <i class="fas fa-box-open"></i>
-                <h3>কোনো পণ্য পাওয়া যায়নি</h3>
-                <p>এখনও কোনো পণ্য যোগ করা হয়নি। এডমিন প্যানেলে গিয়ে পণ্য যোগ করুন।</p>
-                <a href="admin.html" target="_blank" style="background-color: var(--primary); color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
-                    <i class="fas fa-user-cog"></i> এডমিন প্যানেল
-                </a>
+                <h3>পণ্য লোড হচ্ছে...</h3>
+                <p>দয়া করে একটু অপেক্ষা করুন।</p>
             </div>
         </div>
     </div>
@@ -771,175 +812,225 @@
     </div>
 
     <script>
-        // প্রোডাক্ট ডেটা - লোকাল স্টোরেজ থেকে লোড
-        let products = JSON.parse(localStorage.getItem('hollymart_products')) || [];
+        // JSONBin.io কনফিগারেশন - আপনার API কী এবং বিন আইডি বসান
+        const BIN_ID = "6990731843b1c97be97e98a2"; // JSONBin.io থেকে বিন আইডি নিন
+        const API_KEY = "$2a$10$mSmU5ILgRSIfdVX4ofVOSeNOgLfzR6oC/4YQejiSDGNZOwft3GaRK"; // JSONBin.io থেকে সিক্রেট কী নিন
+        const API_URL = https://api.jsonbin.io/v3/b/6990731843b1c97be97e98a2;
 
-        // DOM লোড হওয়ার পর
-        document.addEventListener('DOMContentLoaded', function() {
-            const productsContainer = document.getElementById('products-container');
-            const orderModal = document.getElementById('order-modal');
-            const closeModal = document.getElementById('close-modal');
-            const modalProductName = document.getElementById('modal-product-name');
-            const whatsappOrderLink = document.getElementById('whatsapp-order-link');
-            const categoryFilter = document.getElementById('category-filter');
-            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-            const navLinks = document.getElementById('nav-links');
-            const productCountSpan = document.getElementById('product-count');
-            
-            // মোবাইল মেনু টগল
-            mobileMenuBtn.addEventListener('click', function() {
-                navLinks.classList.toggle('active');
-            });
-            
-            // মেনু আইটেম ক্লিক করলে মোবাইল মেনু বন্ধ করুন
-            navLinks.addEventListener('click', function(e) {
-                if (e.target.tagName === 'A') {
-                    navLinks.classList.remove('active');
-                }
-            });
-            
-            // প্রোডাক্ট লোড ফাংশন - সবাই দেখতে পারবে
-            function loadProducts(filterCategory = "সকল") {
-                productsContainer.innerHTML = '';
-                
-                // প্রোডাক্ট কাউন্ট আপডেট
-                productCountSpan.textContent = products.length;
-                
-                if (products.length === 0) {
-                    productsContainer.innerHTML = `
-                        <div class="no-products">
-                            <i class="fas fa-box-open"></i>
-                            <h3>কোনো পণ্য পাওয়া যায়নি</h3>
-                            <p>এখনও কোনো পণ্য যোগ করা হয়নি। এডমিন প্যানেলে গিয়ে পণ্য যোগ করুন।</p>
-                            <a href="admin.html" target="_blank" style="background-color: var(--primary); color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
-                                <i class="fas fa-user-cog"></i> এডমিন প্যানেল
-                            </a>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                const filteredProducts = filterCategory === "সকল" 
-                    ? products 
-                    : products.filter(product => product.category === filterCategory);
-                
-                if (filteredProducts.length === 0) {
-                    productsContainer.innerHTML = `
-                        <div class="no-products">
-                            <i class="fas fa-filter"></i>
-                            <h3>এই ক্যাটেগরিতে কোনো পণ্য নেই</h3>
-                            <p>অন্যান্য ক্যাটেগরি ব্রাউজ করুন।</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                filteredProducts.forEach(product => {
-                    const productCard = document.createElement('div');
-                    productCard.className = 'product-card';
-                    
-                    // সবাই প্রোডাক্ট দেখতে পারবে
-                    productCard.innerHTML = `
-                        <div class="product-img">
-                            ${product.image ? 
-                                `<img src="${product.image}" alt="${product.name}" loading="lazy">` : 
-                                `<i class="fas fa-carrot"></i>`
-                            }
-                        </div>
-                        <div class="product-info">
-                            <h3 class="product-title">${product.name}</h3>
-                            <span class="product-category">${product.category}</span>
-                            <p class="product-desc">${product.description}</p>
-                            <div class="product-actions">
-                                <button class="order-btn" data-id="${product.id}" data-name="${product.name}">
-                                    <i class="fab fa-whatsapp"></i> অর্ডার করুন
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    
-                    productsContainer.appendChild(productCard);
-                });
-                
-                // অর্ডার বাটনে ইভেন্ট লিসেনার যোগ (সবাই অর্ডার করতে পারবে)
-                document.querySelectorAll('.order-btn').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const productName = this.getAttribute('data-name');
-                        
-                        // WhatsApp মেসেজ তৈরি
-                        const message = `হ্যালো Holly Mart, আমি "${productName}" পণ্যটি অর্ডার করতে চাই। দয়া করে আমার সাথে যোগাযোগ করুন।`;
-                        const encodedMessage = encodeURIComponent(message);
-                        const whatsappURL = `https://wa.me/8801981117475?text=${encodedMessage}`;
-                        
-                        // মডাল আপডেট
-                        modalProductName.textContent = `পণ্য: ${productName}`;
-                        whatsappOrderLink.href = whatsappURL;
-                        
-                        // মডাল দেখানো
-                        orderModal.style.display = 'flex';
-                    });
-                });
+        // লোকাল ক্যাশে
+        let products = [];
+        let lastFetchTime = 0;
+        const CACHE_DURATION = 60000; // 1 মিনিট
+
+        // DOM এলিমেন্টস
+        const productsContainer = document.getElementById('products-container');
+        const orderModal = document.getElementById('order-modal');
+        const closeModal = document.getElementById('close-modal');
+        const modalProductName = document.getElementById('modal-product-name');
+        const whatsappOrderLink = document.getElementById('whatsapp-order-link');
+        const categoryFilter = document.getElementById('category-filter');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const navLinks = document.getElementById('nav-links');
+        const productCountSpan = document.getElementById('product-count');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const networkStatus = document.getElementById('network-status');
+
+        // মোবাইল মেনু টগল
+        mobileMenuBtn.addEventListener('click', function() {
+            navLinks.classList.toggle('active');
+        });
+
+        // মেনু আইটেম ক্লিক করলে মোবাইল মেনু বন্ধ করুন
+        navLinks.addEventListener('click', function(e) {
+            if (e.target.tagName === 'A') {
+                navLinks.classList.remove('active');
             }
-            
-            // ক্যাটেগরি ফিল্টার ইভেন্ট
-            categoryFilter.addEventListener('click', function(e) {
-                if (e.target.classList.contains('category-btn')) {
-                    // সকল বাটন থেকে active ক্লাস রিমুভ
-                    document.querySelectorAll('.category-btn').forEach(btn => {
-                        btn.classList.remove('active');
-                    });
-                    
-                    // ক্লিক করা বাটনে active ক্লাস যোগ
-                    e.target.classList.add('active');
-                    
-                    // প্রোডাক্ট লোড
-                    const category = e.target.getAttribute('data-category');
-                    loadProducts(category);
-                }
-            });
-            
-            // মডাল বন্ধ করা
-            closeModal.addEventListener('click', function() {
-                orderModal.style.display = 'none';
-            });
-            
-            // মডালের বাইরে ক্লিক করলে বন্ধ
-            window.addEventListener('click', function(e) {
-                if (e.target === orderModal) {
-                    orderModal.style.display = 'none';
-                }
-            });
-            
-            // নেভিগেশন লিংকগুলির জন্য স্মুথ স্ক্রোল
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', function(e) {
-                    const href = this.getAttribute('href');
-                    
-                    if (href !== "#" && href !== "#!" && !href.includes('admin.html')) {
-                        e.preventDefault();
-                        const targetElement = document.querySelector(href);
-                        
-                        if (targetElement) {
-                            window.scrollTo({
-                                top: targetElement.offsetTop - 70,
-                                behavior: 'smooth'
-                            });
-                        }
+        });
+
+        // নেটওয়ার্ক স্ট্যাটাস দেখান
+        function showNetworkStatus(message, type = 'info') {
+            networkStatus.textContent = message;
+            networkStatus.className = 'network-status';
+            if (type === 'error') {
+                networkStatus.classList.add('error');
+            } else if (type === 'success') {
+                networkStatus.classList.add('success');
+            }
+            networkStatus.style.display = 'block';
+            setTimeout(() => {
+                networkStatus.style.display = 'none';
+            }, 3000);
+        }
+
+        // JSONBin.io থেকে ডেটা লোড
+        async function loadProductsFromAPI() {
+            try {
+                loadingSpinner.style.display = 'block';
+                
+                const response = await fetch(API_URL, {
+                    headers: {
+                        'X-Master-Key': API_KEY
                     }
                 });
+                
+                if (!response.ok) {
+                    throw new Error(HTTP error! status: ${response.status});
+                }
+                
+                const data = await response.json();
+                products = data.record || [];
+                
+                // লোকাল স্টোরেজে ক্যাশে
+                localStorage.setItem('hollymart_products', JSON.stringify(products));
+                lastFetchTime = Date.now();
+                
+                loadingSpinner.style.display = 'none';
+                showNetworkStatus('পণ্য সফলভাবে লোড হয়েছে!', 'success');
+                return products;
+            } catch (error) {
+                console.error('API থেকে ডেটা লোড করতে সমস্যা:', error);
+                
+                // লোকাল ক্যাশে থেকে লোড
+                const cached = localStorage.getItem('hollymart_products');
+                products = cached ? JSON.parse(cached) : [];
+                
+                loadingSpinner.style.display = 'none';
+                showNetworkStatus('অফলাইন মোডে পণ্য দেখাচ্ছে', 'error');
+                return products;
+            }
+        }
+
+        // প্রোডাক্ট লোড ফাংশন
+        async function loadProducts(filterCategory = "সকল") {
+            productsContainer.innerHTML = '';
+            
+            // API থেকে ডেটা লোড
+            await loadProductsFromAPI();
+            
+            // প্রোডাক্ট কাউন্ট আপডেট
+            productCountSpan.textContent = products.length;
+            
+            if (products.length === 0) {
+                productsContainer.innerHTML = `
+                    <div class="no-products">
+                        <i class="fas fa-box-open"></i>
+                        <h3>কোনো পণ্য পাওয়া যায়নি</h3>
+                        <p>এখনও কোনো পণ্য যোগ করা হয়নি। এডমিন প্যানেলে গিয়ে পণ্য যোগ করুন।</p>
+                        <a href="admin.html" target="_blank" style="background-color: var(--primary); color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
+                            <i class="fas fa-user-cog"></i> এডমিন প্যানেল
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+            
+            const filteredProducts = filterCategory === "সকল" 
+                ? products 
+                : products.filter(product => product.category === filterCategory);
+            
+            if (filteredProducts.length === 0) {
+                productsContainer.innerHTML = `
+                    <div class="no-products">
+                        <i class="fas fa-filter"></i>
+                        <h3>এই ক্যাটেগরিতে কোনো পণ্য নেই</h3>
+                        <p>অন্যান্য ক্যাটেগরি ব্রাউজ করুন।</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            filteredProducts.forEach(product => {
+                const productCard = document.createElement('div');
+                productCard.className = 'product-card';
+                
+                productCard.innerHTML = `
+                    <div class="product-img">
+                        ${product.image ? 
+                            <img src="${product.image}" alt="${product.name}" loading="lazy"> : 
+                            <i class="fas fa-carrot"></i>
+                        }
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-title">${product.name}</h3>
+                        <span class="product-category">${product.category}</span>
+                        <p class="product-desc">${product.description}</p>
+                        <div class="product-actions">
+                            <button class="order-btn" data-id="${product.id}" data-name="${product.name}">
+                                <i class="fab fa-whatsapp"></i> অর্ডার করুন
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                productsContainer.appendChild(productCard);
             });
             
-            // লোকাল স্টোরেজ চেঞ্জ হলে প্রোডাক্ট রিলোড
-            window.addEventListener('storage', function(e) {
-                if (e.key === 'hollymart_products') {
-                    products = JSON.parse(e.newValue) || [];
-                    loadProducts();
+            // অর্ডার বাটনে ইভেন্ট লিসেনার যোগ
+            document.querySelectorAll('.order-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const productName = this.getAttribute('data-name');
+                    
+                    const message = হ্যালো Holly Mart, আমি "${productName}" পণ্যটি অর্ডার করতে চাই। দয়া করে আমার সাথে যোগাযোগ করুন।;
+                    const encodedMessage = encodeURIComponent(message);
+                    const whatsappURL = https://wa.me/8801981117475?text=${encodedMessage};
+                    
+                    modalProductName.textContent = পণ্য: ${productName};
+                    whatsappOrderLink.href = whatsappURL;
+                    orderModal.style.display = 'flex';
+                });
+            });
+        }
+
+        // ক্যাটেগরি ফিল্টার ইভেন্ট
+        categoryFilter.addEventListener('click', function(e) {
+            if (e.target.classList.contains('category-btn')) {
+                document.querySelectorAll('.category-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                e.target.classList.add('active');
+                const category = e.target.getAttribute('data-category');
+                loadProducts(category);
+            }
+        });
+
+        // মডাল বন্ধ করা
+        closeModal.addEventListener('click', function() {
+            orderModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', function(e) {
+            if (e.target === orderModal) {
+                orderModal.style.display = 'none';
+            }
+        });
+
+        // নেভিগেশন লিংকগুলির জন্য স্মুথ স্ক্রোল
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                const href = this.getAttribute('href');
+                
+                if (href !== "#" && href !== "#!" && !href.includes('admin.html')) {
+                    e.preventDefault();
+                    const targetElement = document.querySelector(href);
+                    
+                    if (targetElement) {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 70,
+                            behavior: 'smooth'
+                        });
+                    }
                 }
             });
-            
-            // প্রথমবার প্রোডাক্ট লোড
-            loadProducts();
         });
+
+        // প্রতি 1 মিনিটে ডেটা রিফ্রেশ
+        setInterval(async () => {
+            await loadProducts();
+        }, 60000);
+
+        // প্রথমবার প্রোডাক্ট লোড
+        loadProducts();
     </script>
 </body>
 </html>
