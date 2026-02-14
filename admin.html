@@ -6,7 +6,7 @@
     <title>Holly Mart - এডমিন প্যানেল</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* সম্পূর্ণ আগের CSS একই থাকবে */
+        /* CSS code same as before - keeping it consistent */
         * {
             margin: 0;
             padding: 0;
@@ -30,7 +30,6 @@
             line-height: 1.6;
         }
 
-        /* হেডার স্টাইল */
         header {
             background: linear-gradient(135deg, var(--admin), #6c3483);
             color: white;
@@ -101,7 +100,6 @@
             background-color: rgba(255,255,255,0.3);
         }
 
-        /* লগইন সিস্টেম */
         .login-section {
             background-color: white;
             border-radius: 10px;
@@ -124,7 +122,6 @@
             justify-content: center;
         }
 
-        /* অ্যাডমিন প্যানেল */
         .admin-panel {
             background-color: white;
             border-radius: 10px;
@@ -221,7 +218,6 @@
             background-color: #219653;
         }
 
-        /* ছবি আপলোড স্টাইল */
         .image-upload-container {
             margin-bottom: 1.2rem;
             border: 2px dashed #ddd;
@@ -333,7 +329,6 @@
             color: white;
         }
 
-        /* এডমিন কন্ট্রোলস */
         .admin-controls {
             display: flex;
             gap: 8px;
@@ -376,7 +371,6 @@
             background-color: #7d3c98;
         }
 
-        /* পাসওয়ার্ড পরিবর্তন ফর্ম */
         .password-change-form {
             background-color: #f8f9fa;
             border-radius: 8px;
@@ -399,7 +393,6 @@
             gap: 8px;
         }
 
-        /* প্রোডাক্ট লিস্ট */
         .product-list {
             margin-top: 2rem;
             border-top: 1px solid #eee;
@@ -466,7 +459,6 @@
             background-color: #c0392b;
         }
 
-        /* ফুটার */
         footer {
             background-color: var(--dark);
             color: white;
@@ -529,7 +521,6 @@
             color: rgba(255, 255, 255, 0.7);
         }
 
-        /* মডাল স্টাইল */
         .modal {
             display: none;
             position: fixed;
@@ -600,7 +591,6 @@
             font-size: 0.9rem;
         }
 
-        /* লোডিং স্পিনার */
         .loading-spinner {
             display: none;
             margin: 8px auto;
@@ -617,7 +607,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* স্ট্যাটাস বার */
         .status-bar {
             background-color: var(--admin);
             color: white;
@@ -649,7 +638,6 @@
             transform: scale(1.05);
         }
 
-        /* নেটওয়ার্ক স্ট্যাটাস */
         .network-status {
             background-color: var(--warning);
             color: white;
@@ -669,7 +657,6 @@
             background-color: var(--primary);
         }
 
-        /* রেস্পন্সিভ */
         @media (max-width: 768px) {
             .product-list-grid {
                 grid-template-columns: 1fr;
@@ -692,7 +679,6 @@
     </style>
 </head>
 <body>
-    <!-- হেডার -->
     <header>
         <div class="container">
             <div class="header-content">
@@ -708,12 +694,9 @@
         </div>
     </header>
 
-    <!-- মূল কন্টেন্ট -->
     <div class="container">
-        <!-- নেটওয়ার্ক স্ট্যাটাস -->
         <div id="network-status" class="network-status"></div>
 
-        <!-- স্ট্যাটাস বার -->
         <div class="status-bar">
             <span><i class="fas fa-database"></i> মোট পণ্য: <span id="total-products">0</span></span>
             <a href="index.html" target="_blank" class="view-site-btn">
@@ -725,11 +708,11 @@
         <section id="login" class="login-section">
             <h3><i class="fas fa-lock"></i> এডমিন লগইন</h3>
             
-            <!-- লগইন ফর্ম -->
             <form id="login-form">
                 <div class="form-group">
                     <label for="login-password">এডমিন পাসওয়ার্ড</label>
                     <input type="password" id="login-password" class="form-control" placeholder="এডমিন পাসওয়ার্ড দিন" required>
+                    <small style="display: block; margin-top: 5px; color: #666;">পাসওয়ার্ড: 123456</small>
                 </div>
                 <button type="submit" class="btn-submit">
                     <i class="fas fa-sign-in-alt"></i> লগইন করুন
@@ -747,7 +730,6 @@
                 </button>
             </div>
             
-            <!-- এডমিন কন্ট্রোলস -->
             <div class="admin-controls">
                 <button class="admin-btn delete-all" id="delete-all-btn">
                     <i class="fas fa-trash-alt"></i> সকল পণ্য ডিলিট
@@ -760,7 +742,6 @@
                 </button>
             </div>
             
-            <!-- পাসওয়ার্ড পরিবর্তন ফর্ম -->
             <div class="password-change-form" id="password-change-form">
                 <h4><i class="fas fa-key"></i> এডমিন পাসওয়ার্ড পরিবর্তন</h4>
                 <form id="change-password-form">
@@ -784,7 +765,6 @@
                 </form>
             </div>
             
-            <!-- নতুন প্রোডাক্ট যোগ ফর্ম -->
             <h4 style="color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
                 <i class="fas fa-plus-circle"></i> নতুন পণ্য যোগ করুন
             </h4>
@@ -811,7 +791,6 @@
                     <textarea id="product-desc" class="form-control" rows="3" placeholder="পণ্যের বিবরণ লিখুন" required></textarea>
                 </div>
                 
-                <!-- ছবি আপলোড সেকশন -->
                 <div class="form-group">
                     <label>পণ্যের ছবি</label>
                     
@@ -824,7 +803,6 @@
                         </button>
                     </div>
                     
-                    <!-- গ্যালারী আপলোড -->
                     <div id="local-upload-section" class="image-upload-container">
                         <label for="image-upload" class="image-upload-label">
                             <i class="fas fa-cloud-upload-alt"></i>
@@ -844,7 +822,6 @@
                         <div class="loading-spinner" id="upload-spinner"></div>
                     </div>
                     
-                    <!-- URL ইনপুট -->
                     <div id="url-upload-section" class="form-group" style="display: none;">
                         <input type="text" id="product-img-url" class="form-control" placeholder="ছবির লিংক দিন">
                         <small>ছবির লিংক দিন বা গ্যালারী থেকে আপলোড করুন</small>
@@ -859,17 +836,15 @@
                 পণ্যটি সফলভাবে যোগ করা হয়েছে! এখন সব ডিভাইসে সবাই দেখতে পারবে।
             </div>
 
-            <!-- প্রোডাক্ট লিস্ট -->
             <div class="product-list">
                 <h4><i class="fas fa-boxes"></i> বর্তমান পণ্য তালিকা (<span id="product-count">0</span>)</h4>
                 <div id="product-list-container" class="product-list-grid">
-                    <!-- প্রোডাক্ট লিস্ট এখানে জাভাস্ক্রিপ্ট দ্বারা লোড হবে -->
+                    <!-- প্রোডাক্ট লিস্ট এখানে লোড হবে -->
                 </div>
             </div>
         </section>
     </div>
 
-    <!-- ফুটার -->
     <footer>
         <div class="container">
             <div class="footer-content">
@@ -941,21 +916,19 @@
     </div>
 
     <script>
-        // JSONBin.io কনফিগারেশন - আপনার API কী এবং বিন আইডি বসান
-        const BIN_ID = "6990731843b1c97be97e98a2"; // JSONBin.io থেকে বিন আইডি নিন
-        const API_KEY = "$2a$10$mSmU5ILgRSIfdVX4ofVOSeNOgLfzR6oC/4YQejiSDGNZOwft3GaRK"; // JSONBin.io থেকে সিক্রেট কী নিন
-        const API_URL = https://api.jsonbin.io/v3/b/6990731843b1c97be97e98a2;
+        // আপনার দেওয়া API তথ্য
+        const BIN_ID = "6990731843b1c97be97e98a2";
+        const API_KEY = "$2a$10$mSmU5ILgRSIfdVX4ofVOSeNOgLfzR6oC/4YQejiSDGNZOwft3GaRK";
+        const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
-        // এডমিন পাসওয়ার্ড - লোকাল স্টোরেজ থেকে লোড
-        let adminPassword = localStorage.getItem('hollymart_admin_password') || "abcdefghij";
+        // এডমিন পাসওয়ার্ড সেট করুন (123456)
+        let adminPassword = localStorage.getItem('hollymart_admin_password') || "123456";
         
-        // প্রোডাক্ট ডেটা
         let products = [];
         let isLoggedIn = localStorage.getItem('hollymart_admin_logged_in') === 'true';
         let productToDelete = null;
         let uploadedImageData = null;
 
-        // DOM এলিমেন্টস
         const loginSection = document.getElementById('login');
         const adminPanel = document.getElementById('admin-panel');
         const loginForm = document.getElementById('login-form');
@@ -984,7 +957,6 @@
         const networkStatus = document.getElementById('network-status');
         const refreshBtn = document.getElementById('refresh-btn');
 
-        // ছবি আপলোড এলিমেন্টস
         const uploadLocalBtn = document.getElementById('upload-local-btn');
         const uploadUrlBtn = document.getElementById('upload-url-btn');
         const localUploadSection = document.getElementById('local-upload-section');
@@ -996,7 +968,6 @@
         const productImgUrlInput = document.getElementById('product-img-url');
         const uploadSpinner = document.getElementById('upload-spinner');
 
-        // নেটওয়ার্ক স্ট্যাটাস দেখান
         function showNetworkStatus(message, type = 'info') {
             networkStatus.textContent = message;
             networkStatus.className = 'network-status';
@@ -1011,7 +982,6 @@
             }, 3000);
         }
 
-        // JSONBin.io থেকে ডেটা লোড
         async function loadProductsFromAPI() {
             try {
                 const response = await fetch(API_URL, {
@@ -1021,13 +991,12 @@
                 });
                 
                 if (!response.ok) {
-                    throw new Error(HTTP error! status: ${response.status});
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const data = await response.json();
                 products = data.record || [];
                 
-                // লোকাল স্টোরেজে ক্যাশে
                 localStorage.setItem('hollymart_products', JSON.stringify(products));
                 
                 showNetworkStatus('পণ্য সফলভাবে লোড হয়েছে!', 'success');
@@ -1035,7 +1004,6 @@
             } catch (error) {
                 console.error('API থেকে ডেটা লোড করতে সমস্যা:', error);
                 
-                // লোকাল ক্যাশে থেকে লোড
                 const cached = localStorage.getItem('hollymart_products');
                 products = cached ? JSON.parse(cached) : [];
                 
@@ -1044,7 +1012,6 @@
             }
         }
 
-        // JSONBin.io এ ডেটা সেভ
         async function saveProductsToAPI() {
             try {
                 const response = await fetch(API_URL, {
@@ -1057,10 +1024,9 @@
                 });
                 
                 if (!response.ok) {
-                    throw new Error(HTTP error! status: ${response.status});
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                // লোকাল স্টোরেজে ক্যাশে
                 localStorage.setItem('hollymart_products', JSON.stringify(products));
                 
                 showNetworkStatus('পণ্য সফলভাবে সেভ হয়েছে!', 'success');
@@ -1068,7 +1034,6 @@
             } catch (error) {
                 console.error('API তে ডেটা সেভ করতে সমস্যা:', error);
                 
-                // লোকাল স্টোরেজে সেভ
                 localStorage.setItem('hollymart_products', JSON.stringify(products));
                 
                 showNetworkStatus('অফলাইন মোডে সেভ হয়েছে', 'error');
@@ -1076,7 +1041,6 @@
             }
         }
 
-        // প্রোডাক্ট লোড ফাংশন (এডমিন প্যানেলের জন্য)
         async function loadProducts() {
             if (!productListContainer) return;
             
@@ -1121,13 +1085,12 @@
                     const productName = this.getAttribute('data-name');
                     
                     productToDelete = productId;
-                    deleteProductName.textContent = পণ্য: ${productName};
+                    deleteProductName.textContent = `পণ্য: ${productName}`;
                     deleteModal.style.display = 'flex';
                 });
             });
         }
 
-        // প্রোডাক্ট কাউন্ট আপডেট
         function updateProductCount() {
             totalProductsSpan.textContent = products.length;
             if (productCountSpan) {
@@ -1135,7 +1098,6 @@
             }
         }
 
-        // লগইন স্টেট চেক
         function checkLoginState() {
             if (isLoggedIn) {
                 loginSection.style.display = 'none';
@@ -1148,12 +1110,10 @@
             updateProductCount();
         }
 
-        // রিফ্রেশ বাটন
         refreshBtn.addEventListener('click', function() {
             loadProducts();
         });
 
-        // ছবি আপলোড ট্যাব সিস্টেম
         uploadLocalBtn.addEventListener('click', function() {
             uploadLocalBtn.classList.add('active');
             uploadUrlBtn.classList.remove('active');
@@ -1168,7 +1128,6 @@
             urlUploadSection.style.display = 'block';
         });
 
-        // ফাইল আপলোড হ্যান্ডলার
         imageUploadInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -1245,28 +1204,26 @@
                 isLoggedIn = true;
                 localStorage.setItem('hollymart_admin_logged_in', 'true');
                 checkLoginState();
-                showTempMessage('সফলভাবে লগইন করা হয়েছে!', 'success');
+                showTempMessage('✅ সফলভাবে লগইন করা হয়েছে!', 'success');
                 loginForm.reset();
+                loginError.style.display = 'none';
             } else {
-                loginError.textContent = 'পাসওয়ার্ড ভুল! সঠিক পাসওয়ার্ড দিন।';
+                loginError.textContent = '❌ পাসওয়ার্ড ভুল! সঠিক পাসওয়ার্ড 123456';
                 loginError.style.display = 'block';
             }
         });
 
-        // লগআউট বাটন
         logoutBtn.addEventListener('click', function() {
             isLoggedIn = false;
             localStorage.removeItem('hollymart_admin_logged_in');
             checkLoginState();
-            showTempMessage('সফলভাবে লগআউট করা হয়েছে!', 'success');
+            showTempMessage('✅ সফলভাবে লগআউট করা হয়েছে!', 'success');
         });
 
-        // পাসওয়ার্ড পরিবর্তন বাটন
         passwordChangeBtn.addEventListener('click', function() {
             passwordChangeForm.classList.toggle('active');
         });
 
-        // পাসওয়ার্ড পরিবর্তন ফর্ম সাবমিট
         changePasswordForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -1312,7 +1269,6 @@
             showTempMessage('পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!', 'success');
         });
 
-        // নতুন প্রোডাক্ট যোগ ফর্ম সাবমিট
         addProductForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -1344,14 +1300,11 @@
             
             products.push(newProduct);
             
-            // API তে সেভ
             await saveProductsToAPI();
             
-            // UI আপডেট
             loadProducts();
             updateProductCount();
             
-            // ফর্ম রিসেট
             addProductForm.reset();
             localImagePreview.src = '';
             localPreviewContainer.classList.remove('active');
@@ -1368,7 +1321,6 @@
             showTempMessage('পণ্য সফলভাবে যোগ করা হয়েছে! এখন সব ডিভাইসে সবাই দেখতে পারবে।', 'success');
         });
 
-        // সকল পণ্য ডিলিট বাটন
         deleteAllBtn.addEventListener('click', function() {
             if (products.length === 0) {
                 showTempMessage('কোনো পণ্য নেই ডিলিট করার!', 'warning');
@@ -1478,7 +1430,6 @@
             }
         });
 
-        // প্রতি 1 মিনিটে ডেটা রিফ্রেশ
         setInterval(() => {
             if (isLoggedIn) {
                 loadProducts();
@@ -1490,4 +1441,3 @@
     </script>
 </body>
 </html>
-
