@@ -6,6 +6,7 @@
     <title>Holly Mart - এডমিন প্যানেল</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* সম্পূর্ণ আগের CSS একই থাকবে */
         * {
             margin: 0;
             padding: 0;
@@ -648,6 +649,26 @@
             transform: scale(1.05);
         }
 
+        /* নেটওয়ার্ক স্ট্যাটাস */
+        .network-status {
+            background-color: var(--warning);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            text-align: center;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        .network-status.error {
+            background-color: var(--secondary);
+        }
+
+        .network-status.success {
+            background-color: var(--primary);
+        }
+
         /* রেস্পন্সিভ */
         @media (max-width: 768px) {
             .product-list-grid {
@@ -689,6 +710,9 @@
 
     <!-- মূল কন্টেন্ট -->
     <div class="container">
+        <!-- নেটওয়ার্ক স্ট্যাটাস -->
+        <div id="network-status" class="network-status"></div>
+
         <!-- স্ট্যাটাস বার -->
         <div class="status-bar">
             <span><i class="fas fa-database"></i> মোট পণ্য: <span id="total-products">0</span></span>
@@ -706,6 +730,7 @@
                 <div class="form-group">
                     <label for="login-password">এডমিন পাসওয়ার্ড</label>
                     <input type="password" id="login-password" class="form-control" placeholder="এডমিন পাসওয়ার্ড দিন" required>
+                    <small style="display: block; margin-top: 5px; color: #666;">ডিফল্ট পাসওয়ার্ড: abcdefghij</small>
                 </div>
                 <button type="submit" class="btn-submit">
                     <i class="fas fa-sign-in-alt"></i> লগইন করুন
@@ -730,6 +755,9 @@
                 </button>
                 <button class="admin-btn password-change" id="password-change-btn">
                     <i class="fas fa-key"></i> পাসওয়ার্ড পরিবর্তন
+                </button>
+                <button class="admin-btn" id="refresh-btn">
+                    <i class="fas fa-sync-alt"></i> রিফ্রেশ
                 </button>
             </div>
             
@@ -829,7 +857,7 @@
                 </button>
             </form>
             <div id="success-message" class="success-message">
-                পণ্যটি সফলভাবে যোগ করা হয়েছে! এখন ওয়েবসাইটে সবাই দেখতে পারবে।
+                পণ্যটি সফলভাবে যোগ করা হয়েছে! এখন সব ডিভাইসে সবাই দেখতে পারবে।
             </div>
 
             <!-- প্রোডাক্ট লিস্ট -->
@@ -914,479 +942,552 @@
     </div>
 
     <script>
+        // JSONBin.io কনফিগারেশন - আপনার API কী এবং বিন আইডি বসান
+        const BIN_ID = "6990731843b1c97be97e98a2"; // JSONBin.io থেকে বিন আইডি নিন
+        const API_KEY = "$2a$10$mSmU5ILgRSIfdVX4ofVOSeNOgLfzR6oC/4YQejiSDGNZOwft3GaRK"; // JSONBin.io থেকে সিক্রেট কী নিন
+        const API_URL = https://api.jsonbin.io/v3/b/6990731843b1c97be97e98a2;
+
         // এডমিন পাসওয়ার্ড - লোকাল স্টোরেজ থেকে লোড
         let adminPassword = localStorage.getItem('hollymart_admin_password') || "abcdefghij";
         
-        // প্রোডাক্ট ডেটা - লোকাল স্টোরেজ থেকে লোড
-        let products = JSON.parse(localStorage.getItem('hollymart_products')) || [];
-        
+        // প্রোডাক্ট ডেটা
+        let products = [];
         let isLoggedIn = localStorage.getItem('hollymart_admin_logged_in') === 'true';
         let productToDelete = null;
         let uploadedImageData = null;
 
-        // DOM লোড হওয়ার পর
-        document.addEventListener('DOMContentLoaded', function() {
-            const loginSection = document.getElementById('login');
-            const adminPanel = document.getElementById('admin-panel');
-            const loginForm = document.getElementById('login-form');
-            const loginError = document.getElementById('login-error');
-            const logoutBtn = document.getElementById('logout-btn');
-            const addProductForm = document.getElementById('add-product-form');
-            const successMessage = document.getElementById('success-message');
-            const deleteAllBtn = document.getElementById('delete-all-btn');
-            const deleteAllModal = document.getElementById('delete-all-modal');
-            const closeDeleteAllModal = document.getElementById('close-delete-all-modal');
-            const confirmDeleteAllBtn = document.getElementById('confirm-delete-all');
-            const cancelDeleteAllBtn = document.getElementById('cancel-delete-all');
-            const passwordChangeBtn = document.getElementById('password-change-btn');
-            const passwordChangeForm = document.getElementById('password-change-form');
-            const changePasswordForm = document.getElementById('change-password-form');
-            const passwordChangeError = document.getElementById('password-change-error');
-            const passwordChangeSuccess = document.getElementById('password-change-success');
-            const deleteModal = document.getElementById('delete-modal');
-            const closeDeleteModal = document.getElementById('close-delete-modal');
-            const confirmDeleteBtn = document.getElementById('confirm-delete');
-            const cancelDeleteBtn = document.getElementById('cancel-delete');
-            const deleteProductName = document.getElementById('delete-product-name');
-            const totalProductsSpan = document.getElementById('total-products');
-            const productCountSpan = document.getElementById('product-count');
-            
-            // ছবি আপলোড এলিমেন্টস
-            const uploadLocalBtn = document.getElementById('upload-local-btn');
-            const uploadUrlBtn = document.getElementById('upload-url-btn');
-            const localUploadSection = document.getElementById('local-upload-section');
-            const urlUploadSection = document.getElementById('url-upload-section');
-            const imageUploadInput = document.getElementById('image-upload');
-            const localImagePreview = document.getElementById('local-image-preview');
-            const localPreviewContainer = document.getElementById('local-preview');
-            const removeLocalImageBtn = document.getElementById('remove-local-image');
-            const productImgUrlInput = document.getElementById('product-img-url');
-            const uploadSpinner = document.getElementById('upload-spinner');
-            
-            // লগইন স্টেট চেক
-            checkLoginState();
-            
-            // ছবি আপলোড ট্যাব সিস্টেম
-            uploadLocalBtn.addEventListener('click', function() {
-                uploadLocalBtn.classList.add('active');
-                uploadUrlBtn.classList.remove('active');
-                localUploadSection.style.display = 'block';
-                urlUploadSection.style.display = 'none';
-            });
-            
-            uploadUrlBtn.addEventListener('click', function() {
-                uploadUrlBtn.classList.add('active');
-                uploadLocalBtn.classList.remove('active');
-                localUploadSection.style.display = 'none';
-                urlUploadSection.style.display = 'block';
-            });
-            
-            // ফাইল আপলোড হ্যান্ডলার
-            imageUploadInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    handleImageUpload(file);
-                }
-            });
-            
-            // ড্রাগ অ্যান্ড ড্রপ হ্যান্ডলার
-            localUploadSection.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                localUploadSection.classList.add('dragover');
-            });
-            
-            localUploadSection.addEventListener('dragleave', function() {
-                localUploadSection.classList.remove('dragover');
-            });
-            
-            localUploadSection.addEventListener('drop', function(e) {
-                e.preventDefault();
-                localUploadSection.classList.remove('dragover');
-                
-                const file = e.dataTransfer.files[0];
-                if (file && file.type.startsWith('image/')) {
-                    handleImageUpload(file);
-                } else {
-                    showTempMessage('শুধুমাত্র ছবি ফাইল আপলোড করতে পারবেন!', 'error');
-                }
-            });
-            
-            // ছবি আপলোড হ্যান্ডলার
-            function handleImageUpload(file) {
-                if (file.size > 5 * 1024 * 1024) {
-                    showTempMessage('ছবির সাইজ 5MB এর বেশি হতে পারবে না!', 'error');
-                    return;
-                }
-                
-                if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/webp')) {
-                    showTempMessage('শুধুমাত্র JPEG, PNG বা WebP ফাইল আপলোড করতে পারবেন!', 'error');
-                    return;
-                }
-                
-                uploadSpinner.style.display = 'block';
-                
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    uploadSpinner.style.display = 'none';
-                    localImagePreview.src = e.target.result;
-                    localPreviewContainer.classList.add('active');
-                    uploadedImageData = e.target.result;
-                    showTempMessage('ছবি সফলভাবে আপলোড হয়েছে!', 'success');
-                };
-                
-                reader.onerror = function() {
-                    uploadSpinner.style.display = 'none';
-                    showTempMessage('ছবি আপলোড করতে সমস্যা হয়েছে!', 'error');
-                };
-                
-                reader.readAsDataURL(file);
+        // DOM এলিমেন্টস
+        const loginSection = document.getElementById('login');
+        const adminPanel = document.getElementById('admin-panel');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const logoutBtn = document.getElementById('logout-btn');
+        const addProductForm = document.getElementById('add-product-form');
+        const successMessage = document.getElementById('success-message');
+        const deleteAllBtn = document.getElementById('delete-all-btn');
+        const deleteAllModal = document.getElementById('delete-all-modal');
+        const closeDeleteAllModal = document.getElementById('close-delete-all-modal');
+        const confirmDeleteAllBtn = document.getElementById('confirm-delete-all');
+        const cancelDeleteAllBtn = document.getElementById('cancel-delete-all');
+        const passwordChangeBtn = document.getElementById('password-change-btn');
+        const passwordChangeForm = document.getElementById('password-change-form');
+        const changePasswordForm = document.getElementById('change-password-form');
+        const passwordChangeError = document.getElementById('password-change-error');
+        const passwordChangeSuccess = document.getElementById('password-change-success');
+        const deleteModal = document.getElementById('delete-modal');
+        const closeDeleteModal = document.getElementById('close-delete-modal');
+        const confirmDeleteBtn = document.getElementById('confirm-delete');
+        const cancelDeleteBtn = document.getElementById('cancel-delete');
+        const deleteProductName = document.getElementById('delete-product-name');
+        const totalProductsSpan = document.getElementById('total-products');
+        const productCountSpan = document.getElementById('product-count');
+        const productListContainer = document.getElementById('product-list-container');
+        const networkStatus = document.getElementById('network-status');
+        const refreshBtn = document.getElementById('refresh-btn');
+
+        // ছবি আপলোড এলিমেন্টস
+        const uploadLocalBtn = document.getElementById('upload-local-btn');
+        const uploadUrlBtn = document.getElementById('upload-url-btn');
+        const localUploadSection = document.getElementById('local-upload-section');
+        const urlUploadSection = document.getElementById('url-upload-section');
+        const imageUploadInput = document.getElementById('image-upload');
+        const localImagePreview = document.getElementById('local-image-preview');
+        const localPreviewContainer = document.getElementById('local-preview');
+        const removeLocalImageBtn = document.getElementById('remove-local-image');
+        const productImgUrlInput = document.getElementById('product-img-url');
+        const uploadSpinner = document.getElementById('upload-spinner');
+
+        // নেটওয়ার্ক স্ট্যাটাস দেখান
+        function showNetworkStatus(message, type = 'info') {
+            networkStatus.textContent = message;
+            networkStatus.className = 'network-status';
+            if (type === 'error') {
+                networkStatus.classList.add('error');
+            } else if (type === 'success') {
+                networkStatus.classList.add('success');
             }
-            
-            // ছবি রিমুভ বাটন
-            removeLocalImageBtn.addEventListener('click', function() {
-                localImagePreview.src = '';
-                localPreviewContainer.classList.remove('active');
-                imageUploadInput.value = '';
-                uploadedImageData = null;
-                showTempMessage('ছবি রিমুভ করা হয়েছে!', 'success');
-            });
-            
-            // লগইন স্টেট চেক ফাংশন
-            function checkLoginState() {
-                if (isLoggedIn) {
-                    loginSection.style.display = 'none';
-                    adminPanel.classList.add('active');
-                    loadProducts();
-                } else {
-                    loginSection.style.display = 'block';
-                    adminPanel.classList.remove('active');
-                }
-                updateProductCount();
-            }
-            
-            // প্রোডাক্ট কাউন্ট আপডেট
-            function updateProductCount() {
-                totalProductsSpan.textContent = products.length;
-                if (productCountSpan) {
-                    productCountSpan.textContent = products.length;
-                }
-            }
-            
-            // প্রোডাক্ট লোড ফাংশন (এডমিন প্যানেলের জন্য)
-            function loadProducts() {
-                const productListContainer = document.getElementById('product-list-container');
-                if (!productListContainer) return;
-                
-                productListContainer.innerHTML = '';
-                updateProductCount();
-                
-                if (products.length === 0) {
-                    productListContainer.innerHTML = `
-                        <div style="grid-column: 1/-1; text-align: center; padding: 2rem; background-color: #f9f9f9; border-radius: 8px;">
-                            <i class="fas fa-box-open" style="font-size: 2rem; color: #ccc; margin-bottom: 1rem;"></i>
-                            <p style="color: #666;">কোনো পণ্য নেই। নতুন পণ্য যোগ করুন।</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                // সাজানো: নতুন পণ্য প্রথমে দেখাবে
-                const sortedProducts = [...products].reverse();
-                
-                sortedProducts.forEach(product => {
-                    const productItem = document.createElement('div');
-                    productItem.className = 'product-list-item';
-                    productItem.innerHTML = `
-                        <div class="product-list-info">
-                            <h5>${product.name}</h5>
-                            <p>
-                                <span style="background-color: #e8f5e9; color: var(--primary); padding: 2px 8px; border-radius: 12px;">${product.category}</span>
-                                <span style="margin-left: 8px;">ID: ${product.id}</span>
-                            </p>
-                        </div>
-                        <button class="delete-single-btn" data-id="${product.id}" data-name="${product.name}">
-                            <i class="fas fa-trash"></i> ডিলিট
-                        </button>
-                    `;
-                    productListContainer.appendChild(productItem);
-                });
-                
-                // ডিলিট বাটনে ইভেন্ট লিসেনার যোগ
-                document.querySelectorAll('.delete-single-btn').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const productId = parseInt(this.getAttribute('data-id'));
-                        const productName = this.getAttribute('data-name');
-                        
-                        productToDelete = productId;
-                        deleteProductName.textContent = `পণ্য: ${productName}`;
-                        deleteModal.style.display = 'flex';
-                    });
-                });
-            }
-            
-            // লগইন ফর্ম সাবমিট
-            loginForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const password = document.getElementById('login-password').value;
-                
-                if (password === adminPassword) {
-                    isLoggedIn = true;
-                    localStorage.setItem('hollymart_admin_logged_in', 'true');
-                    checkLoginState();
-                    showTempMessage('সফলভাবে লগইন করা হয়েছে!', 'success');
-                    loginForm.reset();
-                } else {
-                    loginError.textContent = 'পাসওয়ার্ড ভুল! সঠিক পাসওয়ার্ড দিন।';
-                    loginError.style.display = 'block';
-                }
-            });
-            
-            // লগআউট বাটন
-            logoutBtn.addEventListener('click', function() {
-                isLoggedIn = false;
-                localStorage.removeItem('hollymart_admin_logged_in');
-                checkLoginState();
-                showTempMessage('সফলভাবে লগআউট করা হয়েছে!', 'success');
-            });
-            
-            // পাসওয়ার্ড পরিবর্তন বাটন
-            passwordChangeBtn.addEventListener('click', function() {
-                passwordChangeForm.classList.toggle('active');
-            });
-            
-            // পাসওয়ার্ড পরিবর্তন ফর্ম সাবমিট
-            changePasswordForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const currentPassword = document.getElementById('current-password').value;
-                const newPassword = document.getElementById('new-password').value;
-                const confirmPassword = document.getElementById('confirm-password').value;
-                
-                if (currentPassword !== adminPassword) {
-                    passwordChangeError.textContent = 'বর্তমান পাসওয়ার্ড ভুল!';
-                    passwordChangeError.style.display = 'block';
-                    passwordChangeSuccess.style.display = 'none';
-                    return;
-                }
-                
-                if (newPassword.length < 6) {
-                    passwordChangeError.textContent = 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে!';
-                    passwordChangeError.style.display = 'block';
-                    passwordChangeSuccess.style.display = 'none';
-                    return;
-                }
-                
-                if (newPassword !== confirmPassword) {
-                    passwordChangeError.textContent = 'নতুন পাসওয়ার্ড মিলছে না!';
-                    passwordChangeError.style.display = 'block';
-                    passwordChangeSuccess.style.display = 'none';
-                    return;
-                }
-                
-                adminPassword = newPassword;
-                localStorage.setItem('hollymart_admin_password', adminPassword);
-                
-                passwordChangeError.style.display = 'none';
-                passwordChangeSuccess.textContent = 'পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!';
-                passwordChangeSuccess.style.display = 'block';
-                
-                changePasswordForm.reset();
-                
-                setTimeout(() => {
-                    passwordChangeSuccess.style.display = 'none';
-                }, 3000);
-                
-                passwordChangeForm.classList.remove('active');
-                showTempMessage('পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!', 'success');
-            });
-            
-            // নতুন প্রোডাক্ট যোগ ফর্ম সাবমিট
-            addProductForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const productName = document.getElementById('product-name').value;
-                const productCategory = document.getElementById('product-category').value;
-                const productDesc = document.getElementById('product-desc').value;
-                
-                let productImage = null;
-                
-                if (uploadLocalBtn.classList.contains('active')) {
-                    if (uploadedImageData) {
-                        productImage = uploadedImageData;
-                    } else {
-                        showTempMessage('দয়া করে একটি ছবি আপলোড করুন!', 'error');
-                        return;
+            networkStatus.style.display = 'block';
+            setTimeout(() => {
+                networkStatus.style.display = 'none';
+            }, 3000);
+        }
+
+        // JSONBin.io থেকে ডেটা লোড
+        async function loadProductsFromAPI() {
+            try {
+                const response = await fetch(API_URL, {
+                    headers: {
+                        'X-Master-Key': API_KEY
                     }
-                } else {
-                    productImage = productImgUrlInput.value.trim() || getDefaultImageByCategory(productCategory);
+                });
+                
+                if (!response.ok) {
+                    throw new Error(HTTP error! status: ${response.status});
                 }
                 
-                const newProduct = {
-                    id: products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1,
-                    name: productName,
-                    category: productCategory,
-                    description: productDesc,
-                    image: productImage,
-                    addedAt: new Date().toISOString()
-                };
+                const data = await response.json();
+                products = data.record || [];
                 
-                products.push(newProduct);
+                // লোকাল স্টোরেজে ক্যাশে
                 localStorage.setItem('hollymart_products', JSON.stringify(products));
                 
-                // UI আপডেট
-                loadProducts();
-                updateProductCount();
+                showNetworkStatus('পণ্য সফলভাবে লোড হয়েছে!', 'success');
+                return products;
+            } catch (error) {
+                console.error('API থেকে ডেটা লোড করতে সমস্যা:', error);
                 
-                // ফর্ম রিসেট
-                addProductForm.reset();
-                localImagePreview.src = '';
-                localPreviewContainer.classList.remove('active');
-                imageUploadInput.value = '';
-                uploadedImageData = null;
-                productImgUrlInput.value = '';
-                uploadLocalBtn.click();
+                // লোকাল ক্যাশে থেকে লোড
+                const cached = localStorage.getItem('hollymart_products');
+                products = cached ? JSON.parse(cached) : [];
                 
-                // সাকসেস মেসেজ
-                successMessage.style.display = 'block';
-                setTimeout(() => {
-                    successMessage.style.display = 'none';
-                }, 3000);
+                showNetworkStatus('অফলাইন মোডে পণ্য দেখাচ্ছে', 'error');
+                return products;
+            }
+        }
+
+        // JSONBin.io এ ডেটা সেভ
+        async function saveProductsToAPI() {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify(products)
+                });
                 
-                showTempMessage('পণ্য সফলভাবে যোগ করা হয়েছে! সবাই এখন ওয়েবসাইটে দেখতে পারবে।', 'success');
-            });
-            
-            // সকল পণ্য ডিলিট বাটন
-            deleteAllBtn.addEventListener('click', function() {
-                if (products.length === 0) {
-                    showTempMessage('কোনো পণ্য নেই ডিলিট করার!', 'warning');
-                    return;
+                if (!response.ok) {
+                    throw new Error(HTTP error! status: ${response.status});
                 }
-                deleteAllModal.style.display = 'flex';
-            });
-            
-            // কনফার্ম সকল পণ্য ডিলিট
-            confirmDeleteAllBtn.addEventListener('click', function() {
-                products = [];
+                
+                // লোকাল স্টোরেজে ক্যাশে
                 localStorage.setItem('hollymart_products', JSON.stringify(products));
-                loadProducts();
-                deleteAllModal.style.display = 'none';
-                showTempMessage('সকল পণ্য সফলভাবে ডিলিট করা হয়েছে!', 'success');
-            });
-            
-            // ক্যানসেল সকল পণ্য ডিলিট
-            cancelDeleteAllBtn.addEventListener('click', function() {
-                deleteAllModal.style.display = 'none';
-            });
-            
-            // কনফার্ম ডিলিট
-            confirmDeleteBtn.addEventListener('click', function() {
-                if (productToDelete) {
-                    deleteProduct(productToDelete);
-                    deleteModal.style.display = 'none';
-                    productToDelete = null;
-                }
-            });
-            
-            // ক্যানসেল ডিলিট
-            cancelDeleteBtn.addEventListener('click', function() {
-                deleteModal.style.display = 'none';
-                productToDelete = null;
-            });
-            
-            // প্রোডাক্ট ডিলিট ফাংশন
-            function deleteProduct(productId) {
-                const productIndex = products.findIndex(p => p.id === productId);
                 
-                if (productIndex !== -1) {
-                    products.splice(productIndex, 1);
-                    localStorage.setItem('hollymart_products', JSON.stringify(products));
-                    loadProducts();
-                    updateProductCount();
-                    showTempMessage('পণ্যটি সফলভাবে ডিলিট করা হয়েছে!', 'success');
-                }
+                showNetworkStatus('পণ্য সফলভাবে সেভ হয়েছে!', 'success');
+                return true;
+            } catch (error) {
+                console.error('API তে ডেটা সেভ করতে সমস্যা:', error);
+                
+                // লোকাল স্টোরেজে সেভ
+                localStorage.setItem('hollymart_products', JSON.stringify(products));
+                
+                showNetworkStatus('অফলাইন মোডে সেভ হয়েছে', 'error');
+                return false;
             }
+        }
+
+        // প্রোডাক্ট লোড ফাংশন (এডমিন প্যানেলের জন্য)
+        async function loadProducts() {
+            if (!productListContainer) return;
             
-            // ডিফল্ট ইমেজ ফাংশন
-            function getDefaultImageByCategory(category) {
-                const defaultImages = {
-                    'সবজি': 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-                    'ফল': 'https://images.unsplash.com/photo-1603833665858-e61d17a86224?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-                    'মাছ-মাংস': 'https://images.unsplash.com/photo-1599487488170-d11d8e9c0c0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-                    'ডেইরি': 'https://images.unsplash.com/photo-1563636619-e9143da7973b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-                    'বেকারি': 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-                    'মসলা': 'https://images.unsplash.com/photo-1596040033221-a1f4f8a71b92?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-                    'অন্যান্য': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-                };
-                return defaultImages[category] || defaultImages['অন্যান্য'];
-            }
+            await loadProductsFromAPI();
             
-            // টেম্পোরারি মেসেজ ফাংশন
-            function showTempMessage(message, type = 'success') {
-                const messageDiv = document.createElement('div');
-                messageDiv.textContent = message;
-                messageDiv.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    padding: 12px 20px;
-                    border-radius: 5px;
-                    color: white;
-                    font-weight: 600;
-                    z-index: 3000;
-                    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-                    animation: slideIn 0.3s ease-out;
-                    font-size: 0.9rem;
-                    max-width: 80%;
+            productListContainer.innerHTML = '';
+            updateProductCount();
+            
+            if (products.length === 0) {
+                productListContainer.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 2rem; background-color: #f9f9f9; border-radius: 8px;">
+                        <i class="fas fa-box-open" style="font-size: 2rem; color: #ccc; margin-bottom: 1rem;"></i>
+                        <p style="color: #666;">কোনো পণ্য নেই। নতুন পণ্য যোগ করুন।</p>
+                    </div>
                 `;
-                
-                if (type === 'success') messageDiv.style.backgroundColor = '#27ae60';
-                else if (type === 'error') messageDiv.style.backgroundColor = '#e74c3c';
-                else messageDiv.style.backgroundColor = '#f39c12';
-                
-                document.body.appendChild(messageDiv);
-                
-                setTimeout(() => {
-                    messageDiv.style.animation = 'slideOut 0.3s ease-out';
-                    setTimeout(() => {
-                        document.body.removeChild(messageDiv);
-                    }, 300);
-                }, 3000);
+                return;
             }
             
-            // মডাল বন্ধ করা
-            closeDeleteModal.addEventListener('click', function() {
+            const sortedProducts = [...products].reverse();
+            
+            sortedProducts.forEach(product => {
+                const productItem = document.createElement('div');
+                productItem.className = 'product-list-item';
+                productItem.innerHTML = `
+                    <div class="product-list-info">
+                        <h5>${product.name}</h5>
+                        <p>
+                            <span style="background-color: #e8f5e9; color: var(--primary); padding: 2px 8px; border-radius: 12px;">${product.category}</span>
+                            <span style="margin-left: 8px;">ID: ${product.id}</span>
+                        </p>
+                    </div>
+                    <button class="delete-single-btn" data-id="${product.id}" data-name="${product.name}">
+                        <i class="fas fa-trash"></i> ডিলিট
+                    </button>
+                `;
+                productListContainer.appendChild(productItem);
+            });
+            
+            document.querySelectorAll('.delete-single-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = parseInt(this.getAttribute('data-id'));
+                    const productName = this.getAttribute('data-name');
+                    
+                    productToDelete = productId;
+                    deleteProductName.textContent = পণ্য: ${productName};
+                    deleteModal.style.display = 'flex';
+                });
+            });
+        }
+
+        // প্রোডাক্ট কাউন্ট আপডেট
+        function updateProductCount() {
+            totalProductsSpan.textContent = products.length;
+            if (productCountSpan) {
+                productCountSpan.textContent = products.length;
+            }
+        }
+
+        // লগইন স্টেট চেক
+        function checkLoginState() {
+            if (isLoggedIn) {
+                loginSection.style.display = 'none';
+                adminPanel.classList.add('active');
+                loadProducts();
+            } else {
+                loginSection.style.display = 'block';
+                adminPanel.classList.remove('active');
+            }
+            updateProductCount();
+        }
+
+        // রিফ্রেশ বাটন
+        refreshBtn.addEventListener('click', function() {
+            loadProducts();
+        });
+
+        // ছবি আপলোড ট্যাব সিস্টেম
+        uploadLocalBtn.addEventListener('click', function() {
+            uploadLocalBtn.classList.add('active');
+            uploadUrlBtn.classList.remove('active');
+            localUploadSection.style.display = 'block';
+            urlUploadSection.style.display = 'none';
+        });
+        
+        uploadUrlBtn.addEventListener('click', function() {
+            uploadUrlBtn.classList.add('active');
+            uploadLocalBtn.classList.remove('active');
+            localUploadSection.style.display = 'none';
+            urlUploadSection.style.display = 'block';
+        });
+
+        // ফাইল আপলোড হ্যান্ডলার
+        imageUploadInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleImageUpload(file);
+            }
+        });
+
+        localUploadSection.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            localUploadSection.classList.add('dragover');
+        });
+
+        localUploadSection.addEventListener('dragleave', function() {
+            localUploadSection.classList.remove('dragover');
+        });
+
+        localUploadSection.addEventListener('drop', function(e) {
+            e.preventDefault();
+            localUploadSection.classList.remove('dragover');
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleImageUpload(file);
+            } else {
+                showTempMessage('শুধুমাত্র ছবি ফাইল আপলোড করতে পারবেন!', 'error');
+            }
+        });
+
+        function handleImageUpload(file) {
+            if (file.size > 5 * 1024 * 1024) {
+                showTempMessage('ছবির সাইজ 5MB এর বেশি হতে পারবে না!', 'error');
+                return;
+            }
+            
+            if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/webp')) {
+                showTempMessage('শুধুমাত্র JPEG, PNG বা WebP ফাইল আপলোড করতে পারবেন!', 'error');
+                return;
+            }
+            
+            uploadSpinner.style.display = 'block';
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadSpinner.style.display = 'none';
+                localImagePreview.src = e.target.result;
+                localPreviewContainer.classList.add('active');
+                uploadedImageData = e.target.result;
+                showTempMessage('ছবি সফলভাবে আপলোড হয়েছে!', 'success');
+            };
+            
+            reader.onerror = function() {
+                uploadSpinner.style.display = 'none';
+                showTempMessage('ছবি আপলোড করতে সমস্যা হয়েছে!', 'error');
+            };
+            
+            reader.readAsDataURL(file);
+        }
+
+        removeLocalImageBtn.addEventListener('click', function() {
+            localImagePreview.src = '';
+            localPreviewContainer.classList.remove('active');
+            imageUploadInput.value = '';
+            uploadedImageData = null;
+            showTempMessage('ছবি রিমুভ করা হয়েছে!', 'success');
+        });
+
+        // লগইন ফর্ম সাবমিট
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const password = document.getElementById('login-password').value;
+            
+            if (password === adminPassword) {
+                isLoggedIn = true;
+                localStorage.setItem('hollymart_admin_logged_in', 'true');
+                checkLoginState();
+                showTempMessage('সফলভাবে লগইন করা হয়েছে!', 'success');
+                loginForm.reset();
+            } else {
+                loginError.textContent = 'পাসওয়ার্ড ভুল! সঠিক পাসওয়ার্ড দিন।';
+                loginError.style.display = 'block';
+            }
+        });
+
+        // লগআউট বাটন
+        logoutBtn.addEventListener('click', function() {
+            isLoggedIn = false;
+            localStorage.removeItem('hollymart_admin_logged_in');
+            checkLoginState();
+            showTempMessage('সফলভাবে লগআউট করা হয়েছে!', 'success');
+        });
+
+        // পাসওয়ার্ড পরিবর্তন বাটন
+        passwordChangeBtn.addEventListener('click', function() {
+            passwordChangeForm.classList.toggle('active');
+        });
+
+        // পাসওয়ার্ড পরিবর্তন ফর্ম সাবমিট
+        changePasswordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const currentPassword = document.getElementById('current-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            
+            if (currentPassword !== adminPassword) {
+                passwordChangeError.textContent = 'বর্তমান পাসওয়ার্ড ভুল!';
+                passwordChangeError.style.display = 'block';
+                passwordChangeSuccess.style.display = 'none';
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                passwordChangeError.textContent = 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে!';
+                passwordChangeError.style.display = 'block';
+                passwordChangeSuccess.style.display = 'none';
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                passwordChangeError.textContent = 'নতুন পাসওয়ার্ড মিলছে না!';
+                passwordChangeError.style.display = 'block';
+                passwordChangeSuccess.style.display = 'none';
+                return;
+            }
+            
+            adminPassword = newPassword;
+            localStorage.setItem('hollymart_admin_password', adminPassword);
+            
+            passwordChangeError.style.display = 'none';
+            passwordChangeSuccess.textContent = 'পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!';
+            passwordChangeSuccess.style.display = 'block';
+            
+            changePasswordForm.reset();
+            
+            setTimeout(() => {
+                passwordChangeSuccess.style.display = 'none';
+            }, 3000);
+            
+            passwordChangeForm.classList.remove('active');
+            showTempMessage('পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!', 'success');
+        });
+
+        // নতুন প্রোডাক্ট যোগ ফর্ম সাবমিট
+        addProductForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const productName = document.getElementById('product-name').value;
+            const productCategory = document.getElementById('product-category').value;
+            const productDesc = document.getElementById('product-desc').value;
+            
+            let productImage = null;
+            
+            if (uploadLocalBtn.classList.contains('active')) {
+                if (uploadedImageData) {
+                    productImage = uploadedImageData;
+                } else {
+                    showTempMessage('দয়া করে একটি ছবি আপলোড করুন!', 'error');
+                    return;
+                }
+            } else {
+                productImage = productImgUrlInput.value.trim() || getDefaultImageByCategory(productCategory);
+            }
+            
+            const newProduct = {
+                id: products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1,
+                name: productName,
+                category: productCategory,
+                description: productDesc,
+                image: productImage,
+                addedAt: new Date().toISOString()
+            };
+            
+            products.push(newProduct);
+            
+            // API তে সেভ
+            await saveProductsToAPI();
+            
+            // UI আপডেট
+            loadProducts();
+            updateProductCount();
+            
+            // ফর্ম রিসেট
+            addProductForm.reset();
+            localImagePreview.src = '';
+            localPreviewContainer.classList.remove('active');
+            imageUploadInput.value = '';
+            uploadedImageData = null;
+            productImgUrlInput.value = '';
+            uploadLocalBtn.click();
+            
+            successMessage.style.display = 'block';
+            setTimeout(() => {
+                successMessage.style.display = 'none';
+            }, 3000);
+            
+            showTempMessage('পণ্য সফলভাবে যোগ করা হয়েছে! এখন সব ডিভাইসে সবাই দেখতে পারবে।', 'success');
+        });
+
+        // সকল পণ্য ডিলিট বাটন
+        deleteAllBtn.addEventListener('click', function() {
+            if (products.length === 0) {
+                showTempMessage('কোনো পণ্য নেই ডিলিট করার!', 'warning');
+                return;
+            }
+            deleteAllModal.style.display = 'flex';
+        });
+
+        confirmDeleteAllBtn.addEventListener('click', async function() {
+            products = [];
+            await saveProductsToAPI();
+            loadProducts();
+            deleteAllModal.style.display = 'none';
+            showTempMessage('সকল পণ্য সফলভাবে ডিলিট করা হয়েছে!', 'success');
+        });
+
+        cancelDeleteAllBtn.addEventListener('click', function() {
+            deleteAllModal.style.display = 'none';
+        });
+
+        confirmDeleteBtn.addEventListener('click', async function() {
+            if (productToDelete) {
+                await deleteProduct(productToDelete);
                 deleteModal.style.display = 'none';
                 productToDelete = null;
-            });
-            
-            closeDeleteAllModal.addEventListener('click', function() {
-                deleteAllModal.style.display = 'none';
-            });
-            
-            // মডালের বাইরে ক্লিক করলে বন্ধ
-            window.addEventListener('click', function(e) {
-                if (e.target === deleteModal) {
-                    deleteModal.style.display = 'none';
-                    productToDelete = null;
-                }
-                if (e.target === deleteAllModal) {
-                    deleteAllModal.style.display = 'none';
-                }
-            });
-            
-            // লোকাল স্টোরেজ চেঞ্জ হলে প্রোডাক্ট রিলোড
-            window.addEventListener('storage', function(e) {
-                if (e.key === 'hollymart_products') {
-                    products = JSON.parse(e.newValue) || [];
-                    if (isLoggedIn) {
-                        loadProducts();
-                        updateProductCount();
-                    }
-                }
-            });
+            }
         });
+
+        cancelDeleteBtn.addEventListener('click', function() {
+            deleteModal.style.display = 'none';
+            productToDelete = null;
+        });
+
+        async function deleteProduct(productId) {
+            const productIndex = products.findIndex(p => p.id === productId);
+            
+            if (productIndex !== -1) {
+                products.splice(productIndex, 1);
+                await saveProductsToAPI();
+                loadProducts();
+                updateProductCount();
+                showTempMessage('পণ্যটি সফলভাবে ডিলিট করা হয়েছে!', 'success');
+            }
+        }
+
+        function getDefaultImageByCategory(category) {
+            const defaultImages = {
+                'সবজি': 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                'ফল': 'https://images.unsplash.com/photo-1603833665858-e61d17a86224?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                'মাছ-মাংস': 'https://images.unsplash.com/photo-1599487488170-d11d8e9c0c0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                'ডেইরি': 'https://images.unsplash.com/photo-1563636619-e9143da7973b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                'বেকারি': 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                'মসলা': 'https://images.unsplash.com/photo-1596040033221-a1f4f8a71b92?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                'অন্যান্য': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+            };
+            return defaultImages[category] || defaultImages['অন্যান্য'];
+        }
+
+        function showTempMessage(message, type = 'success') {
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = message;
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 5px;
+                color: white;
+                font-weight: 600;
+                z-index: 3000;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+                animation: slideIn 0.3s ease-out;
+                font-size: 0.9rem;
+                max-width: 80%;
+            `;
+            
+            if (type === 'success') messageDiv.style.backgroundColor = '#27ae60';
+            else if (type === 'error') messageDiv.style.backgroundColor = '#e74c3c';
+            else messageDiv.style.backgroundColor = '#f39c12';
+            
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => {
+                    document.body.removeChild(messageDiv);
+                }, 300);
+            }, 3000);
+        }
+
+        closeDeleteModal.addEventListener('click', function() {
+            deleteModal.style.display = 'none';
+            productToDelete = null;
+        });
+
+        closeDeleteAllModal.addEventListener('click', function() {
+            deleteAllModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', function(e) {
+            if (e.target === deleteModal) {
+                deleteModal.style.display = 'none';
+                productToDelete = null;
+            }
+            if (e.target === deleteAllModal) {
+                deleteAllModal.style.display = 'none';
+            }
+        });
+
+        // প্রতি 1 মিনিটে ডেটা রিফ্রেশ
+        setInterval(() => {
+            if (isLoggedIn) {
+                loadProducts();
+            }
+        }, 60000);
+
+        // প্রথমবার লোড
+        checkLoginState();
     </script>
 </body>
-
 </html>
